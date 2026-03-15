@@ -1,17 +1,9 @@
-# coding=utf-8
 import subprocess
 
-from core import HackingTool
-from core import HackingToolsCollection
+from core import HackingTool, HackingToolsCollection, console
 
-from rich.console import Console
-from rich.theme import Theme
-from rich.table import Table
 from rich.panel import Panel
 from rich.prompt import Prompt
-
-_theme = Theme({"purple": "#7B61FF"})
-console = Console(theme=_theme)
 
 
 class AndroGuard(HackingTool):
@@ -22,14 +14,15 @@ class AndroGuard(HackingTool):
     PROJECT_URL = "https://github.com/androguard/androguard "
 
     def __init__(self):
-        super(AndroGuard, self).__init__(runnable=False)
+        super().__init__(runnable=False)
 
 
 class Apk2Gold(HackingTool):
     TITLE = "Apk2Gold"
+    SUPPORTED_OS = ["linux"]
     DESCRIPTION = "Apk2Gold is a CLI tool for decompiling Android apps to Java"
     INSTALL_COMMANDS = [
-        "sudo git clone https://github.com/lxdvs/apk2gold.git",
+        "git clone https://github.com/lxdvs/apk2gold.git",
         "cd apk2gold;sudo bash make.sh"
     ]
     PROJECT_URL = "https://github.com/lxdvs/apk2gold "
@@ -47,13 +40,40 @@ class Jadx(HackingTool):
                   "[*] decode AndroidManifest.xml and other resources from " \
                   "resources.arsc"
     INSTALL_COMMANDS = [
-        "sudo git clone https://github.com/skylot/jadx.git",
-        "cd jadx;./gradlew dist"
+        "git clone https://github.com/skylot/jadx.git",
+        # Bug 30 fix: gradlew dist requires Java — check first
+        "java -version 2>&1 | grep -q 'version' && cd jadx && ./gradlew dist || echo '[ERROR] Java not found. Install: sudo apt install default-jdk'",
     ]
     PROJECT_URL = "https://github.com/skylot/jadx"
+    REQUIRES_JAVA = True
 
     def __init__(self):
-        super(Jadx, self).__init__(runnable=False)
+        # Py3-4 fix: super(Jadx, self) → super()
+        super().__init__(runnable=False)
+
+
+class Ghidra(HackingTool):
+    TITLE = "Ghidra (NSA Reverse Engineering)"
+    DESCRIPTION = "NSA's software reverse engineering framework — disassembly, decompilation, scripting."
+    REQUIRES_JAVA = True
+    INSTALL_COMMANDS = [
+        "sudo apt-get install -y ghidra || echo 'Download from https://ghidra-sre.org/'",
+    ]
+    RUN_COMMANDS = ["ghidra --help || echo 'Run: ghidraRun'"]
+    PROJECT_URL = "https://github.com/NationalSecurityAgency/ghidra"
+    SUPPORTED_OS = ["linux", "macos"]
+
+
+class Radare2(HackingTool):
+    TITLE = "Radare2 (RE Framework)"
+    DESCRIPTION = "Portable UNIX-like reverse engineering framework and command-line toolset."
+    INSTALL_COMMANDS = [
+        "git clone https://github.com/radareorg/radare2.git",
+        "cd radare2 && sys/install.sh",
+    ]
+    RUN_COMMANDS = ["r2 -h"]
+    PROJECT_URL = "https://github.com/radareorg/radare2"
+    SUPPORTED_OS = ["linux", "macos"]
 
 
 class ReverseEngineeringTools(HackingToolsCollection):
@@ -61,71 +81,11 @@ class ReverseEngineeringTools(HackingToolsCollection):
     TOOLS = [
         AndroGuard(),
         Apk2Gold(),
-        Jadx()
+        Jadx(),
+        Ghidra(),
+        Radare2(),
     ]
-
-    def _get_attr(self, obj, *names, default=""):
-        for n in names:
-            if hasattr(obj, n):
-                return getattr(obj, n)
-        return default
-
-    def pretty_print(self):
-        table = Table(title="Reverse Engineering Tools", show_lines=True, expand=True)
-        table.add_column("Title", style="purple", no_wrap=True)
-        table.add_column("Description", style="purple")
-        table.add_column("Project URL", style="purple", no_wrap=True)
-
-        for t in self.TOOLS:
-            title = self._get_attr(t, "TITLE", "Title", "title", default=t.__class__.__name__)
-            desc = self._get_attr(t, "DESCRIPTION", "Description", "description", default="").strip().replace("\n", " ")
-            url = self._get_attr(t, "PROJECT_URL", "PROJECT_URL", "PROJECT", "project_url", "projectUrl", default="")
-            table.add_row(str(title), str(desc or "—"), str(url))
-
-        panel = Panel(table, title="[purple]Available Tools[/purple]", border_style="purple")
-        console.print(panel)
-
-    def show_options(self, parent=None):
-        console.print("\n")
-        panel = Panel.fit("[bold magenta]Reverse Engineering Tools Collection[/bold magenta]\n"
-                          "Select a tool to view options or run it.",
-                          border_style="purple")
-        console.print(panel)
-
-        table = Table(title="[bold cyan]Available Tools[/bold cyan]", show_lines=True, expand=True)
-        table.add_column("Index", justify="center", style="bold yellow")
-        table.add_column("Tool Name", justify="left", style="bold green")
-        table.add_column("Description", justify="left", style="white")
-
-        for i, tool in enumerate(self.TOOLS):
-            title = self._get_attr(tool, "TITLE", "Title", "title", default=tool.__class__.__name__)
-            desc = self._get_attr(tool, "DESCRIPTION", "Description", "description", default="—")
-            table.add_row(str(i + 1), title, desc or "—")
-
-        table.add_row("[red]99[/red]", "[bold red]Exit[/bold red]", "Return to previous menu")
-        console.print(table)
-
-        try:
-            choice = Prompt.ask("[bold cyan]Select a tool to run[/bold cyan]", default="99")
-            choice = int(choice)
-            if 1 <= choice <= len(self.TOOLS):
-                selected = self.TOOLS[choice - 1]
-                if hasattr(selected, "show_options"):
-                    selected.show_options(parent=self)
-                elif hasattr(selected, "run"):
-                    selected.run()
-                elif hasattr(selected, "before_run"):
-                    selected.before_run()
-                else:
-                    console.print("[bold yellow]Selected tool has no runnable interface.[/bold yellow]")
-            elif choice == 99:
-                return 99
-        except Exception:
-            console.print("[bold red]Invalid choice. Try again.[/bold red]")
-        return self.show_options(parent=parent)
-
 
 if __name__ == "__main__":
     tools = ReverseEngineeringTools()
-    tools.pretty_print()
     tools.show_options()

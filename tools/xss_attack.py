@@ -1,28 +1,20 @@
-# coding=utf-8
 import os
 import subprocess
-from rich.console import Console
 from rich.panel import Panel
 from rich.prompt import Prompt
-from rich.table import Table
 
-from core import HackingTool
-from core import HackingToolsCollection
-
-console = Console()
+from core import HackingTool, HackingToolsCollection, console
 
 
 class Dalfox(HackingTool):
     TITLE = "DalFox (Finder of XSS)"
     DESCRIPTION = "XSS Scanning and Parameter Analysis tool."
     INSTALL_COMMANDS = [
-        "sudo apt-get install golang",
-        "sudo git clone https://github.com/hahwul/dalfox",
-        "cd dalfox;go install"
+        "sudo apt-get install -y golang",
+        "go install github.com/hahwul/dalfox/v2@latest",
     ]
     RUN_COMMANDS = [
-        "~/go/bin/dalfox",
-        'echo "You Need To Run manually by using [!]~/go/bin/dalfox [options]"'
+        "~/go/bin/dalfox --help",
     ]
     PROJECT_URL = "https://github.com/hahwul/dalfox"
 
@@ -99,8 +91,9 @@ class XSSCon(HackingTool):
             border_style="bright_yellow"
         ))
         website = Prompt.ask("[bold cyan]Enter Website[/bold cyan]")
-        os.system("cd XSSCon;")
-        subprocess.run(["python3", "xsscon.py", "-u", website])
+        from config import get_tools_dir
+        subprocess.run(["python3", "xsscon.py", "-u", website],
+                       cwd=str(get_tools_dir() / "XSSCon"))
 
 
 class XanXSS(HackingTool):
@@ -110,10 +103,9 @@ class XanXSS(HackingTool):
     PROJECT_URL = "https://github.com/Ekultek/XanXSS"
 
     def run(self):
-        os.system("cd XanXSS; python xanxss.py -h")
-        console.print(
-            "[cyan]You have to run it manually using:[/cyan]\n[bold yellow]python xanxss.py [options][/bold yellow]"
-        )
+        from config import get_tools_dir
+        subprocess.run(["python3", "xanxss.py", "-h"],
+                       cwd=str(get_tools_dir() / "XanXSS"))
 
 
 class XSSStrike(HackingTool):
@@ -127,14 +119,15 @@ class XSSStrike(HackingTool):
     PROJECT_URL = "https://github.com/UltimateHackers/XSStrike"
 
     def __init__(self):
-        super(XSSStrike, self).__init__(runnable=False)
+        super().__init__(runnable=False)
 
 
 class RVuln(HackingTool):
     TITLE = "RVuln"
+    SUPPORTED_OS = ["linux"]
     DESCRIPTION = "Multi-threaded and Automated Web Vulnerability Scanner written in Rust."
     INSTALL_COMMANDS = [
-        "sudo git clone https://github.com/iinc0gnit0/RVuln.git;"
+        "git clone https://github.com/iinc0gnit0/RVuln.git;"
         "curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh;"
         "source $HOME/.cargo/env;"
         "sudo apt install librust-openssl-dev;"
@@ -164,30 +157,3 @@ class XSSAttackTools(HackingToolsCollection):
             "A curated set of tools for XSS vulnerability analysis and exploitation.",
             border_style="bright_magenta"
         ))
-
-    def show_options(self, parent=None):
-        console.print("\n")
-        self.show_info()
-
-        table = Table(title="[bold cyan]Available Tools[/bold cyan]", show_lines=True)
-        table.add_column("Index", justify="center", style="bold yellow")
-        table.add_column("Tool Name", justify="left", style="bold green")
-        table.add_column("Description", justify="left", style="white")
-
-        for i, tool in enumerate(self.TOOLS):
-            table.add_row(str(i + 1), tool.TITLE, tool.DESCRIPTION or "—")
-
-        table.add_row("[red]99[/red]", "[bold red]Exit[/bold red]", "Return to Main Menu")
-
-        console.print(table)
-
-        try:
-            choice = Prompt.ask("[bold cyan]Select a tool to run[/bold cyan]")
-            choice = int(choice)
-            if 1 <= choice <= len(self.TOOLS):
-                self.TOOLS[choice - 1].show_options(parent=self)
-            elif choice == 99:
-                return 99
-        except Exception:
-            console.print("[bold red]Invalid choice. Try again.[/bold red]")
-        return self.show_options(parent=parent)

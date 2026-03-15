@@ -1,25 +1,18 @@
-# coding=utf-8
 import os
 import subprocess
 
-from rich.console import Console
-from rich.theme import Theme
-from rich.table import Table
 from rich.panel import Panel
 from rich.prompt import Prompt
+from rich.table import Table
 from rich import box
 
-from core import HackingTool
-from core import HackingToolsCollection
-
-_theme = Theme({"purple": "#7B61FF"})
-console = Console(theme=_theme)
+from core import HackingTool, HackingToolsCollection, console
 
 
 class Cupp(HackingTool):
     TITLE = "Cupp"
-    DESCRIPTION = "WlCreator is a C program that can create all possibilities of passwords,\n " \
-                  "and you can choose Length, Lowercase, Capital, Numbers and Special Chars"
+    # Bug 24 fix: DESCRIPTION was copy-pasted from WlCreator — completely wrong
+    DESCRIPTION = "Common User Passwords Profiler — generates personalized wordlists based on target info."
     INSTALL_COMMANDS = ["git clone https://github.com/Mebus/cupp.git"]
     RUN_COMMANDS = ["cd cupp && python3 cupp.py -i"]
     PROJECT_URL = "https://github.com/Mebus/cupp"
@@ -40,7 +33,7 @@ class WlCreator(HackingTool):
     DESCRIPTION = "WlCreator is a C program that can create all possibilities" \
                   " of passwords,\n and you can choose Length, Lowercase, " \
                   "Capital, Numbers and Special Chars"
-    INSTALL_COMMANDS = ["sudo git clone https://github.com/Z4nzu/wlcreator.git"]
+    INSTALL_COMMANDS = ["git clone https://github.com/Z4nzu/wlcreator.git"]
     RUN_COMMANDS = [
         "cd wlcreator && sudo gcc -o wlcreator wlcreator.c && ./wlcreator 5"]
     PROJECT_URL = "https://github.com/Z4nzu/wlcreator"
@@ -60,7 +53,7 @@ class GoblinWordGenerator(HackingTool):
     TITLE = "Goblin WordGenerator"
     DESCRIPTION = "Goblin WordGenerator"
     INSTALL_COMMANDS = [
-        "sudo git clone https://github.com/UndeadSec/GoblinWordGenerator.git"]
+        "git clone https://github.com/UndeadSec/GoblinWordGenerator.git"]
     RUN_COMMANDS = ["cd GoblinWordGenerator && python3 goblin.py"]
     PROJECT_URL = "https://github.com/UndeadSec/GoblinWordGenerator.git"
 
@@ -83,7 +76,7 @@ class showme(HackingTool):
                   "part of BreachCompilation leak. This database makes " \
                   "finding passwords faster and easier than ever before."
     INSTALL_COMMANDS = [
-        "sudo git clone https://github.com/Viralmaniar/SMWYG-Show-Me-What-You-Got.git",
+        "git clone https://github.com/Viralmaniar/SMWYG-Show-Me-What-You-Got.git",
         "cd SMWYG-Show-Me-What-You-Got && pip3 install -r requirements.txt"
     ]
     RUN_COMMANDS = ["cd SMWYG-Show-Me-What-You-Got && python SMWYG.py"]
@@ -100,13 +93,52 @@ class showme(HackingTool):
         console.print(panel)
 
 
+class Hashcat(HackingTool):
+    TITLE = "Hashcat (Password Cracker)"
+    DESCRIPTION = (
+        "World's fastest GPU/CPU password recovery tool — supports 300+ hash types.\n"
+        "Usage: hashcat -m 0 -a 0 hashes.txt wordlist.txt"
+    )
+    SUPPORTED_OS = ["linux"]
+    INSTALL_COMMANDS = ["sudo apt-get install -y hashcat"]
+    RUN_COMMANDS = ["hashcat --help"]
+    PROJECT_URL = "https://github.com/hashcat/hashcat"
+
+
+class JohnTheRipper(HackingTool):
+    TITLE = "John the Ripper"
+    DESCRIPTION = (
+        "Open-source password security auditing and recovery tool.\n"
+        "Usage: john --wordlist=wordlist.txt hashfile"
+    )
+    SUPPORTED_OS = ["linux"]
+    INSTALL_COMMANDS = ["sudo apt-get install -y john"]
+    RUN_COMMANDS = ["john --help"]
+    PROJECT_URL = "https://github.com/openwall/john"
+
+
+class Haiti(HackingTool):
+    TITLE = "haiti (Hash Type Identifier)"
+    DESCRIPTION = (
+        "Identify hash types — supports 300+ algorithms.\n"
+        "Usage: haiti <hash>"
+    )
+    REQUIRES_RUBY = True
+    INSTALL_COMMANDS = ["gem install haiti-hash"]
+    RUN_COMMANDS = ["haiti --help"]
+    PROJECT_URL = "https://github.com/noraj/haiti"
+
+
 class WordlistGeneratorTools(HackingToolsCollection):
     TITLE = "Wordlist Generator"
     TOOLS = [
         Cupp(),
         WlCreator(),
         GoblinWordGenerator(),
-        showme()
+        showme(),
+        Hashcat(),
+        JohnTheRipper(),
+        Haiti(),
     ]
 
     def show_info(self):
@@ -124,44 +156,6 @@ class WordlistGeneratorTools(HackingToolsCollection):
 
         table.add_row("[red]99[/red]", "[bold red]Exit[/bold red]", "Return to previous menu")
         console.print(table)
-
-    def show_options(self, parent=None):
-        console.print("\n")
-        panel = Panel.fit("[bold magenta]Wordlist Generator Collection[/bold magenta]\n"
-                          "Select a tool to view details or run it.",
-                          border_style="purple")
-        console.print(panel)
-
-        table = Table(title="[bold cyan]Available Tools[/bold cyan]", show_lines=True, expand=True)
-        table.add_column("Index", justify="center", style="bold yellow")
-        table.add_column("Tool Name", justify="left", style="bold green")
-        table.add_column("Description", justify="left", style="white")
-
-        for i, tool in enumerate(self.TOOLS):
-            title = getattr(tool, "TITLE", tool.__class__.__name__)
-            desc = getattr(tool, "DESCRIPTION", "—")
-            table.add_row(str(i + 1), title, desc or "—")
-
-        table.add_row("[red]99[/red]", "[bold red]Exit[/bold red]", "Return to previous menu")
-        console.print(table)
-
-        try:
-            choice = Prompt.ask("[bold cyan]Select a tool to view/run[/bold cyan]", default="99")
-            choice = int(choice)
-            if 1 <= choice <= len(self.TOOLS):
-                selected = self.TOOLS[choice - 1]
-                if hasattr(selected, "show_info"):
-                    selected.show_info()
-                elif hasattr(selected, "run"):
-                    selected.run()
-                else:
-                    console.print("[bold yellow]Selected tool has no runnable interface.[/bold yellow]")
-            elif choice == 99:
-                return 99
-        except Exception:
-            console.print("[bold red]Invalid choice. Try again.[/bold red]")
-        return self.show_options(parent=parent)
-
 
 if __name__ == "__main__":
     tools = WordlistGeneratorTools()

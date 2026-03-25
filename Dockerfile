@@ -31,4 +31,4 @@ COPY . .
 # Ensure the tools directory exists for installs performed at runtime
 RUN mkdir -p /root/.hackingtool/tools
 
-ENTRYPOINT ["python3", "/root/hackingtool/hackingtool.py"]
+ENTRYPOINT ["python3", "/root/hackingtool/hackingtool.py"] 
